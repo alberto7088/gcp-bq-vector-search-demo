@@ -1,61 +1,108 @@
+# main.py
+
 import os
 import json
+import time
+import logging
 import requests
 
 from functions_framework import http
 from google.cloud import bigquery
+from flask import abort
 
-BQ_TABLE    = os.environ["BQ_TABLE"]
-MODEL       = os.environ.get("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-TOP_K       = int(os.environ.get("TOP_K", "5"))
-HF_TOKEN    = os.environ["HF_API_TOKEN"]
-
-bq = bigquery.Client()
+# ─── Configuration ─────────────────────────────────────────────────────────────
+BQ_TABLE   = os.getenv("BQ_TABLE")            # e.g. "myproj.rag_demo.embeddings"
+MODEL      = os.getenv("EMBED_MODEL", "all-MiniLM-L6-v2")
+HF_TOKEN   = os.getenv("HF_API_TOKEN")        # your HF Inference API token
+HF_URL     = f"https://api-inference.huggingface.co/models/sentence-transformers/{MODEL}"
+TOP_K      = 5
+# ─── Clients & Logger ──────────────────────────────────────────────────────────
+bq        = bigquery.Client()
+logger    = logging.getLogger("query_handler")
+logger.setLevel(logging.INFO)
 
 def embed_text(text: str) -> list[float]:
-    """Call HF Inference API to get a sentence embedding."""
-    url = f"https://api-inference.huggingface.co/models/{MODEL}"
-    headers = {
-        "Authorization": f"Bearer {HF_TOKEN}",
-        "Content-Type": "application/json",
-    }
-    # HF will return token-level vectors; for sentence models it often returns a 1×384 array directly
-    resp = requests.post(url, headers=headers, json={"inputs": text})
+    """
+    Call HF Inference API to get a 384-dim sentence embedding.
+    Raises HTTPError on failures.
+    """
+    resp = requests.post(
+        HF_URL,
+        headers={
+            "Authorization": f"Bearer {HF_TOKEN}",
+            "Content-Type": "application/json",
+        },
+        json={"inputs": text},
+        timeout=10,
+    )
     resp.raise_for_status()
     data = resp.json()
-    # If shape is [seq_len, dim], average to get one vector
-    if isinstance(data[0][0], list):
+
+    # HF can return [[...], [...]] or [...], so normalize
+    # If it's a list of lists, average across tokens:
+    if isinstance(data, list) and data and isinstance(data[0], list):
         tokens = data[0]
-        dim    = len(tokens[0])
-        return [ sum(tok[i] for tok in tokens)/len(tokens) for i in range(dim) ]
-    # Else if already [dim], just return it
-    return data[0]
+        dim = len(tokens[0])
+        # mean-pool
+        return [ sum(tok[i] for tok in tokens) / len(tokens) for i in range(dim) ]
+    # else assume flat list
+    if isinstance(data, list) and all(isinstance(v, (float, int)) for v in data):
+        return data
+
+    raise ValueError(f"Unexpected embedding format: {data!r}")
 
 @http
 def query_handler(request):
-    """HTTP Cloud Function: { "query":"…", "top_k":3 } → nearest chunks from BQ."""
-    body = request.get_json(silent=True) or {}
-    q_text = body.get("query")
-    k      = int(body.get("top_k", TOP_K))
-    if not q_text:
-        return ("Bad Request: JSON must include 'query'", 400)
-
-    # 1) Embed
-    embedding = embed_text(q_text)
-
-    # 2) VECTOR_SEARCH in BigQuery
-    emb_list = ",".join(f"{v:.18f}" for v in embedding)
-    sql = f"""
-    WITH q AS (SELECT [{emb_list}] AS embedding)
-    SELECT content, distance
-    FROM VECTOR_SEARCH(
-      TABLE `{BQ_TABLE}`, 'embedding',
-      (SELECT embedding FROM q),
-      TOP_K => {k}, DISTANCE_TYPE => 'COSINE'
-    )
-    ORDER BY distance;
     """
-    job = bq.query(sql)
-    results = [{"content": r.content, "distance": r.distance} for r in job]
+    HTTP entry point.
+    Expects JSON body:
+      { "query": "<your question>", "top_k": 5 }
+    Returns JSON: [{ "content": "...", "similarity": 0.95}, …]
+    """
+    start = time.time()
+    body = request.get_json(silent=True) or {}
+    text = body.get("query")
+    if not text:
+        abort(400, "JSON must include non-empty 'query' field")
 
-    return (json.dumps(results), 200, {"Content-Type": "application/json"})
+    k = body.get("top_k", TOP_K)
+    try:
+        k = int(k)
+    except Exception:
+        abort(400, "'top_k' must be an integer")
+
+    try:
+        emb = embed_text(text)
+    except requests.HTTPError as e:
+        logger.error("HF API error: %s %s", e.response.status_code, e.response.text)
+        abort(502, "Embedding service error")
+    except Exception as e:
+        logger.exception("Failed to embed text")
+        abort(500, "Internal embedding error")
+
+    if len(emb) != 384:
+        logger.error("Got embedding of len %d (expected 384)", len(emb))
+        abort(500, "Invalid embedding length")
+
+    # Build ARRAY<FLOAT64> literal: [0.123, -0.456, …]
+    arr = ",".join(f"{v:.18f}" for v in emb)
+    sql = f"""
+    DECLARE q_emb ARRAY<FLOAT64> DEFAULT [{arr}];
+    SELECT
+      content,
+      1 - ML.DISTANCE(embedding, q_emb, "COSINE") AS similarity
+    FROM `{BQ_TABLE}`
+    ORDER BY similarity DESC
+    LIMIT {k};
+    """
+
+    try:
+        job = bq.query(sql)
+        rows = [{"content": r.content, "similarity": r.similarity} for r in job]
+    except Exception:
+        logger.exception("BigQuery search failed")
+        abort(502, "Vector search error")
+
+    total_ms = int((time.time() - start) * 1000)
+    logger.info("Query handled in %d ms, returned %d rows", total_ms, len(rows))
+    return (json.dumps(rows), 200, {"Content-Type": "application/json"})

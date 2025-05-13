@@ -1,5 +1,5 @@
 [
   { "name": "id",        "type": "STRING",             "mode": "REQUIRED" },
   { "name": "content",   "type": "STRING",             "mode": "REQUIRED" },
-  { "name": "embedding", "type": "VECTOR<FLOAT64,384>", "mode": "REQUIRED" }
+  { "name": "embedding", "type": "ARRAY<FLOAT64>", "mode": "REQUIRED" }
 ]

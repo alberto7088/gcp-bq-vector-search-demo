@@ -1,17 +1,6 @@
 terraform {
   required_version = ">= 1.0.0"
 
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 5.0"
-    }
-    google-beta = {
-      source  = "hashicorp/google-beta"
-      version = "~> 5.0"
-    }
-  }
-
   backend "gcs" {
     bucket = var.tf_state_bucket
     prefix = "${var.env}/terraform/state"
@@ -19,11 +8,6 @@ terraform {
 }
 
 provider "google" {
-  project = var.gcp_project
-  region  = var.region
-}
-
-provider "google-beta" {
   project = var.gcp_project
   region  = var.region
 }
@@ -44,6 +28,7 @@ locals {
 resource "google_project_service" "bigquery" {
   project = var.gcp_project
   service = "bigquery.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_bigquery_dataset" "rag" {
@@ -112,7 +97,7 @@ module "document-retrieval" {
     ENVIRONMENT     = var.env
     HF_API_TOKEN    = data.google_secret_manager_secret_version.hf.secret_data
     EMBED_MODEL     = var.embed_model
-    BQ_TABLE        = "${var.gcp_project}.${var.dataset_id}.embeddings"
+    BQ_TABLE        = "${var.gcp_project}.${google_bigquery_dataset.rag.dataset_id}.embeddings"  # Fixed to use rag dataset
   }
 
   depends_on = [
