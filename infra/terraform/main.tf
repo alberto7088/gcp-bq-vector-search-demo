@@ -44,6 +44,8 @@ locals {
 resource "google_project_service" "bigquery" {
   project = var.gcp_project
   service = "bigquery.googleapis.com"
+
+  disable_on_destroy = false
 }
 
 resource "google_bigquery_dataset" "rag" {
