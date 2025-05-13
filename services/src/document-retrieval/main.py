@@ -5,7 +5,7 @@ import requests
 from functions_framework import http
 from google.cloud import bigquery
 
-BF_TABLE    = os.environ["BQ_TABLE"]
+BQ_TABLE    = os.environ["BQ_TABLE"]
 MODEL       = os.environ.get("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 TOP_K       = int(os.environ.get("TOP_K", "5"))
 HF_TOKEN    = os.environ["HF_API_TOKEN"]
