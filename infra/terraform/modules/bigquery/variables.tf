@@ -19,8 +19,3 @@ variable "schema_file" {
   type        = string
   description = "Path to JSON schema file"
 }
-
-variable "dataset_id" {
-  type        = string
-  description = "Schema under BQ that contains all the table"
-}
