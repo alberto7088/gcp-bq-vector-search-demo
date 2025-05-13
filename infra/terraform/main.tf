@@ -26,6 +26,7 @@ provider "google" {
 provider "google-beta" {
   project = var.gcp_project
   region  = var.region
+  alias   = "beta"
 }
 
 module "state_bucket" {
@@ -64,7 +65,7 @@ module "bq_queries" {
 
   providers = {
     google       = google
-    google-beta = google-beta
+    google-beta.beta = google-beta.beta
   }
 }
 
@@ -78,7 +79,7 @@ module "bq_embeddings" {
 
   providers = {
     google       = google
-    google-beta = google-beta
+    google-beta.beta = google-beta.beta
   }
 }
 

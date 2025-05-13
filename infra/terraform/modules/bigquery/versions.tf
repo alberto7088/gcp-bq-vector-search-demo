@@ -7,7 +7,7 @@ terraform {
     google-beta = {
       source  = "hashicorp/google-beta"
       # Version constraints are inherited from the root module
-      configuration_aliases = [google-beta]
+      configuration_aliases = [google-beta.beta]
     }
   }
 }
