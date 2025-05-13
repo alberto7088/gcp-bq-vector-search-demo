@@ -33,7 +33,7 @@ variable "vector_search_enabled" {
 variable "vector_dimension" {
     description = "Length of the embedding vector"
     type        = number
-    description = 384
+    default = 384
 
 }
 
