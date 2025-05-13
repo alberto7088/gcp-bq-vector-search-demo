@@ -1,17 +1,6 @@
 terraform {
   required_version = ">= 1.0.0"
 
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 5.0"
-    }
-    google-beta = {
-      source  = "hashicorp/google-beta"
-      version = "~> 5.0"
-    }
-  }
-
   backend "gcs" {
     bucket = var.tf_state_bucket
     prefix = "${var.env}/terraform/state"
@@ -21,12 +10,6 @@ terraform {
 provider "google" {
   project = var.gcp_project
   region  = var.region
-}
-
-provider "google-beta" {
-  project = var.gcp_project
-  region  = var.region
-  alias   = "beta"
 }
 
 module "state_bucket" {
@@ -62,11 +45,6 @@ module "bq_queries" {
   table_id    = "queries"
   schema_file = "${path.module}/modules/bigquery/schemas/queries.json"
   vector_search_enabled = true
-
-  providers = {
-    google       = google
-    google-beta.beta = google-beta.beta
-  }
 }
 
 module "bq_embeddings" {
@@ -76,11 +54,6 @@ module "bq_embeddings" {
   table_id    = "embeddings"
   schema_file = "${path.module}/modules/bigquery/schemas/embeddings.json"
   vector_search_enabled = true
-
-  providers = {
-    google       = google
-    google-beta.beta = google-beta.beta
-  }
 }
 
 resource "google_project_service" "run" {
