@@ -1,5 +1,17 @@
 terraform {
   required_version = ">= 1.0.0"
+
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = "~> 5.0"
+    }
+  }
+
   backend "gcs" {
     bucket = var.tf_state_bucket
     prefix = "${var.env}/terraform/state"
@@ -7,6 +19,11 @@ terraform {
 }
 
 provider "google" {
+  project = var.gcp_project
+  region  = var.region
+}
+
+provider "google-beta" {
   project = var.gcp_project
   region  = var.region
 }
@@ -24,16 +41,22 @@ locals {
   code_bucket = module.state_bucket.bucket_name
 }
 
-resource "google_project_service" "bq" {
+resource "google_project_service" "bigquery" {
   project = var.gcp_project
   service = "bigquery.googleapis.com"
+}
+
+resource "google_bigquery_dataset" "rag" {
+  project    = var.gcp_project
+  dataset_id = "rag_demo"
+  location   = var.region
+  depends_on = [google_project_service.bigquery]
 }
 
 module "bq_queries" {
   source      = "./modules/bigquery"
   project_id  = var.gcp_project
-  location    = var.region
-  dataset_id  = var.dataset_id
+  dataset_id  = google_bigquery_dataset.rag.dataset_id
   table_id    = "queries"
   schema_file = "${path.module}/modules/bigquery/schemas/queries.json"
 }
@@ -41,8 +64,7 @@ module "bq_queries" {
 module "bq_embeddings" {
   source      = "./modules/bigquery"
   project_id  = var.gcp_project
-  location    = var.region
-  dataset_id  = var.dataset_id
+  dataset_id  = google_bigquery_dataset.rag.dataset_id
   table_id    = "embeddings"
   schema_file = "${path.module}/modules/bigquery/schemas/embeddings.json"
 }
