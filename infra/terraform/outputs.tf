@@ -1,4 +1,4 @@
-output "word_counter_url" {
-  description = "The public URL of the word_counter function"
-  value       = module.word-counter.function_url
+output "document_retrieval_url" {
+  description = "The public URL of the document retrieval function"
+  value       = module.document-retrieval.function_url
 }

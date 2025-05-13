@@ -70,7 +70,7 @@ data "google_secret_manager_secret_version" "hf" {
   version = "latest"
 }
 
-module "word-counter" {
+module "document-retrieval" {
   source              = "./modules/cloud-function"
   gcp_project         = var.gcp_project
   region              = var.region
