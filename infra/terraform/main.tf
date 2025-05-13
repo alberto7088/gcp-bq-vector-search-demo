@@ -32,7 +32,7 @@ resource "google_project_service" "bq" {
 module "bq_queries" {
   source      = "./modules/bigquery"
   project_id  = var.gcp_project
-  location    = var.location
+  location    = var.region
   dataset_id  = var.dataset_id
   table_id    = "queries"
   schema_file = "${path.module}/modules/bigquery/schemas/queries.json"
@@ -41,7 +41,7 @@ module "bq_queries" {
 module "bq_embeddings" {
   source      = "./modules/bigquery"
   project_id  = var.gcp_project
-  location    = var.location
+  location    = var.region
   dataset_id  = var.dataset_id
   table_id    = "embeddings"
   schema_file = "${path.module}/modules/bigquery/schemas/embeddings.json"
