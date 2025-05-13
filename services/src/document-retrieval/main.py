@@ -23,7 +23,7 @@ def embed_text(text: str) -> list[float]:
     resp = requests.post(url, headers=headers, json={"inputs": text})
     resp.raise_for_status()
     data = resp.json()
-    # If shape is [seq_len, dim], average to get one vector:
+    # If shape is [seq_len, dim], average to get one vector
     if isinstance(data[0][0], list):
         tokens = data[0]
         dim    = len(tokens[0])
