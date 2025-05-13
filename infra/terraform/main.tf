@@ -1,5 +1,11 @@
 terraform {
   required_version = ">= 1.0.0"
+
+  required_providers {
+    google      = { source = "hashicorp/google"      version = "~> 5.0" }
+    google-beta = { source = "hashicorp/google-beta" version = "~> 5.0" }
+  }
+
   backend "gcs" {
     bucket = var.tf_state_bucket
     prefix = "${var.env}/terraform/state"
@@ -7,6 +13,11 @@ terraform {
 }
 
 provider "google" {
+  project = var.gcp_project
+  region  = var.region
+}
+
+provider "google-beta" {
   project = var.gcp_project
   region  = var.region
 }
@@ -24,7 +35,7 @@ locals {
   code_bucket = module.state_bucket.bucket_name
 }
 
-resource "google_project_service" "bq" {
+resource "google_project_service" "bigquery" {
   project = var.gcp_project
   service = "bigquery.googleapis.com"
 }
