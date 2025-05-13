@@ -24,7 +24,6 @@ provider "google" {
 }
 
 provider "google-beta" {
-  alias   = "beta"
   project = var.gcp_project
   region  = var.region
 }
@@ -45,7 +44,6 @@ locals {
 resource "google_project_service" "bigquery" {
   project = var.gcp_project
   service = "bigquery.googleapis.com"
-
   disable_on_destroy = false
 }
 
@@ -62,10 +60,11 @@ module "bq_queries" {
   dataset_id  = google_bigquery_dataset.rag.dataset_id
   table_id    = "queries"
   schema_file = "${path.module}/modules/bigquery/schemas/queries.json"
+  vector_search_enabled = true
 
   providers = {
     google       = google
-    "google-beta" = google-beta
+    google-beta = google-beta
   }
 }
 
@@ -75,10 +74,11 @@ module "bq_embeddings" {
   dataset_id  = google_bigquery_dataset.rag.dataset_id
   table_id    = "embeddings"
   schema_file = "${path.module}/modules/bigquery/schemas/embeddings.json"
+  vector_search_enabled = true
 
   providers = {
     google       = google
-    "google-beta" = google-beta
+    google-beta = google-beta
   }
 }
 
@@ -125,7 +125,7 @@ module "document-retrieval" {
     ENVIRONMENT     = var.env
     HF_API_TOKEN    = data.google_secret_manager_secret_version.hf.secret_data
     EMBED_MODEL     = var.embed_model
-    BQ_TABLE        = "${var.gcp_project}.${var.dataset_id}.embeddings"
+    BQ_TABLE        = "${var.gcp_project}.${google_bigquery_dataset.rag.dataset_id}.embeddings"  # Fixed to use rag dataset
   }
 
   depends_on = [
