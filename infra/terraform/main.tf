@@ -44,7 +44,6 @@ module "bq_queries" {
   dataset_id  = google_bigquery_dataset.rag.dataset_id
   table_id    = "queries"
   schema_file = "${path.module}/modules/bigquery/schemas/queries.json"
-  vector_search_enabled = true
 }
 
 module "bq_embeddings" {
@@ -53,7 +52,6 @@ module "bq_embeddings" {
   dataset_id  = google_bigquery_dataset.rag.dataset_id
   table_id    = "embeddings"
   schema_file = "${path.module}/modules/bigquery/schemas/embeddings.json"
-  vector_search_enabled = true
 }
 
 resource "google_project_service" "run" {
