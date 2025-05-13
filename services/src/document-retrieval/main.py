@@ -5,7 +5,7 @@ import requests
 from functions_framework import http
 from google.cloud import bigquery
 
-BF_TABLE    = os.environ["BQ_TABLE"]
+BQ_TABLE    = os.environ["BQ_TABLE"]
 MODEL       = os.environ.get("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 TOP_K       = int(os.environ.get("TOP_K", "5"))
 HF_TOKEN    = os.environ["HF_API_TOKEN"]
@@ -23,7 +23,7 @@ def embed_text(text: str) -> list[float]:
     resp = requests.post(url, headers=headers, json={"inputs": text})
     resp.raise_for_status()
     data = resp.json()
-    # If shape is [seq_len, dim], average to get one vector:
+    # If shape is [seq_len, dim], average to get one vector
     if isinstance(data[0][0], list):
         tokens = data[0]
         dim    = len(tokens[0])
