@@ -24,6 +24,7 @@ provider "google" {
 }
 
 provider "google-beta" {
+  alias   = "beta"
   project = var.gcp_project
   region  = var.region
 }
@@ -61,6 +62,10 @@ module "bq_queries" {
   dataset_id  = google_bigquery_dataset.rag.dataset_id
   table_id    = "queries"
   schema_file = "${path.module}/modules/bigquery/schemas/queries.json"
+
+  providers = {
+    google-beta = google-beta.beta
+  }
 }
 
 module "bq_embeddings" {
@@ -69,6 +74,10 @@ module "bq_embeddings" {
   dataset_id  = google_bigquery_dataset.rag.dataset_id
   table_id    = "embeddings"
   schema_file = "${path.module}/modules/bigquery/schemas/embeddings.json"
+
+  providers = {
+    google-beta = google-beta.beta
+  }
 }
 
 resource "google_project_service" "run" {
