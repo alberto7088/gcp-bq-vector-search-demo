@@ -64,7 +64,8 @@ module "bq_queries" {
   schema_file = "${path.module}/modules/bigquery/schemas/queries.json"
 
   providers = {
-    google-beta = google-beta.beta
+    google       = google
+    "google-beta" = google-beta
   }
 }
 
@@ -76,7 +77,8 @@ module "bq_embeddings" {
   schema_file = "${path.module}/modules/bigquery/schemas/embeddings.json"
 
   providers = {
-    google-beta = google-beta.beta
+    google       = google
+    "google-beta" = google-beta
   }
 }
 
