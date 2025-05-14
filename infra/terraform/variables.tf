@@ -20,6 +20,11 @@ variable "env" {
   default     = "dev"
 }
 
+variable "is_production" {
+  type        = bool
+  description = "Variable used to prevent destroy of tables"
+}
+
 variable "state_sa_email" {
   description = "Service account email"
   type        = string

@@ -23,3 +23,8 @@ variable "schema_file" {
   type        = string
   description = "Path to JSON schema file"
 }
+
+variable "is_production" {
+  type        = bool
+  description = "Variable used to prevent destroy of tables"
+}

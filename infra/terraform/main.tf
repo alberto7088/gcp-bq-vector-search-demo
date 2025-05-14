@@ -28,7 +28,7 @@ locals {
 resource "google_project_service" "bigquery" {
   project = var.gcp_project
   service = "bigquery.googleapis.com"
-  disable_on_destroy = false
+  disable_on_destroy = var.is_production
 }
 
 resource "google_bigquery_dataset" "rag" {
@@ -39,31 +39,33 @@ resource "google_bigquery_dataset" "rag" {
 }
 
 module "bq_queries" {
-  source      = "./modules/bigquery"
-  project_id  = var.gcp_project
-  dataset_id  = google_bigquery_dataset.rag.dataset_id
-  table_id    = "queries"
-  schema_file = "${path.module}/modules/bigquery/schemas/queries.json"
+  source        = "./modules/bigquery"
+  project_id    = var.gcp_project
+  dataset_id    = google_bigquery_dataset.rag.dataset_id
+  table_id      = "queries"
+  schema_file   = "${path.module}/modules/bigquery/schemas/queries.json"
+  is_production = var.is_production
 }
 
 module "bq_embeddings" {
-  source      = "./modules/bigquery"
-  project_id  = var.gcp_project
-  dataset_id  = google_bigquery_dataset.rag.dataset_id
-  table_id    = "embeddings"
-  schema_file = "${path.module}/modules/bigquery/schemas/embeddings.json"
+  source        = "./modules/bigquery"
+  project_id    = var.gcp_project
+  dataset_id    = google_bigquery_dataset.rag.dataset_id
+  table_id      = "embeddings"
+  schema_file   = "${path.module}/modules/bigquery/schemas/embeddings.json"
+  is_production = var.is_production
 }
 
 resource "google_project_service" "run" {
   project             = var.gcp_project
   service             = "run.googleapis.com"
-  disable_on_destroy  = false
+  disable_on_destroy  = true
 }
 
 resource "google_project_service" "cloudfunctions" {
   project             = var.gcp_project
   service             = "cloudfunctions.googleapis.com"
-  disable_on_destroy  = false
+  disable_on_destroy  = true
 }
 
 module "hf_secret_access" {
