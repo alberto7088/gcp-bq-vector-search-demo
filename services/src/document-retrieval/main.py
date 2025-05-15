@@ -35,7 +35,7 @@ def embed_text(text: str) -> list[float]:
     except Exception as e:
         raise ValueError(f"Couldn't fetch embeddings because of {e}")
 
-    return embeddings
+    return embeddings[0]
 
 
 @http
