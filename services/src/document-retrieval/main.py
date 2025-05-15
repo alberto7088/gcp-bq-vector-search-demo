@@ -9,6 +9,7 @@ import requests
 from functions_framework import http
 from google.cloud import bigquery
 from flask import abort
+from sentence_transformers import SentenceTransformer
 
 # ─── Configuration ─────────────────────────────────────────────────────────────
 BQ_TABLE   = os.getenv("BQ_TABLE")
@@ -22,31 +23,24 @@ logger    = logging.getLogger("query_handler")
 logger.setLevel(logging.INFO)
 
 
+
+sentences = ["This is an example sentence", "Each sentence is converted"]
+
+model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+
+
+
 def embed_text(text: str) -> list[float]:
     """
     Call HF feature-extraction pipeline to get a 384-dim embedding.
     """
-    resp = requests.post(
-        HF_URL,
-        headers={
-            "Authorization": f"Bearer {HF_TOKEN}",
-            "Content-Type": "application/json",
-        },
-        json={"inputs": text},  # single input → feature-extraction
-        timeout=10,
-    )
-    resp.raise_for_status()
-    data = resp.json()
 
-    if isinstance(data, list) and data and isinstance(data[0], list):
-        # HF returns one list per token → mean-pool
-        tokens = data[0]
-        dim = len(tokens[0])
-        return [sum(tok[i] for tok in tokens) / len(tokens) for i in range(dim)]
-    if isinstance(data, list) and all(isinstance(v, (float, int)) for v in data):
-        return data
+    try:
+        embeddings = model.encode([text])
+    except Exception as e:
+        raise ValueError(f"Couldn't fetch embeddings because of {e}")
 
-    raise ValueError(f"Unexpected embedding format: {data!r}")
+    return embeddings
 
 
 @http
