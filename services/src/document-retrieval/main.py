@@ -11,9 +11,9 @@ from google.cloud import bigquery
 from flask import abort
 
 # ─── Configuration ─────────────────────────────────────────────────────────────
-BQ_TABLE   = os.getenv("BQ_TABLE")            # e.g. "myproj.rag_demo.embeddings"
+BQ_TABLE   = os.getenv("BQ_TABLE")
 MODEL      = os.getenv("EMBED_MODEL", "all-MiniLM-L6-v2")
-HF_TOKEN   = os.getenv("HF_API_TOKEN")        # your HF Inference API token
+HF_TOKEN   = os.getenv("HF_API_TOKEN")
 HF_URL     = f"https://api-inference.huggingface.co/models/sentence-transformers/{MODEL}"
 TOP_K      = 5
 # ─── Clients & Logger ──────────────────────────────────────────────────────────
