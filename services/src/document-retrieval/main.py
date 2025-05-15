@@ -14,17 +14,17 @@ from flask import abort
 BQ_TABLE   = os.getenv("BQ_TABLE")
 MODEL      = os.getenv("EMBED_MODEL", "all-MiniLM-L6-v2")
 HF_TOKEN   = os.getenv("HF_API_TOKEN")
-HF_URL     = f"https://api-inference.huggingface.co/models/sentence-transformers/{MODEL}"
+HF_URL   = ("https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/{MODEL}")
 TOP_K      = 5
 # ─── Clients & Logger ──────────────────────────────────────────────────────────
 bq        = bigquery.Client()
 logger    = logging.getLogger("query_handler")
 logger.setLevel(logging.INFO)
 
+
 def embed_text(text: str) -> list[float]:
     """
-    Call HF Inference API to get a 384-dim sentence embedding.
-    Raises HTTPError on failures.
+    Call HF feature-extraction pipeline to get a 384-dim embedding.
     """
     resp = requests.post(
         HF_URL,
@@ -32,24 +32,22 @@ def embed_text(text: str) -> list[float]:
             "Authorization": f"Bearer {HF_TOKEN}",
             "Content-Type": "application/json",
         },
-        json={"inputs": text},
+        json={"inputs": text},  # single input → feature-extraction
         timeout=10,
     )
     resp.raise_for_status()
     data = resp.json()
 
-    # HF can return [[...], [...]] or [...], so normalize
-    # If it's a list of lists, average across tokens:
     if isinstance(data, list) and data and isinstance(data[0], list):
+        # HF returns one list per token → mean-pool
         tokens = data[0]
         dim = len(tokens[0])
-        # mean-pool
-        return [ sum(tok[i] for tok in tokens) / len(tokens) for i in range(dim) ]
-    # else assume flat list
+        return [sum(tok[i] for tok in tokens) / len(tokens) for i in range(dim)]
     if isinstance(data, list) and all(isinstance(v, (float, int)) for v in data):
         return data
 
     raise ValueError(f"Unexpected embedding format: {data!r}")
+
 
 @http
 def query_handler(request):
@@ -84,16 +82,20 @@ def query_handler(request):
         logger.error("Got embedding of len %d (expected 384)", len(emb))
         abort(500, "Invalid embedding length")
 
-    # Build ARRAY<FLOAT64> literal: [0.123, -0.456, …]
     arr = ",".join(f"{v:.18f}" for v in emb)
     sql = f"""
-    DECLARE q_emb ARRAY<FLOAT64> DEFAULT [{arr}];
-    SELECT
-      content,
-      1 - ML.DISTANCE(embedding, q_emb, "COSINE") AS similarity
-    FROM `{BQ_TABLE}`
-    ORDER BY similarity DESC
-    LIMIT {k};
+            WITH params AS (
+              SELECT
+                [{arr}] AS q_emb
+            )
+            SELECT
+              e.content,
+              1 - ML.DISTANCE(e.embedding, p.q_emb, "COSINE") AS similarity
+            FROM
+              `{BQ_TABLE}` AS e,
+              params AS p
+            ORDER BY similarity DESC
+            LIMIT {k};
     """
 
     try:
