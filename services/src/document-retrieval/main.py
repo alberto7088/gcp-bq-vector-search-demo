@@ -15,25 +15,20 @@ from sentence_transformers import SentenceTransformer
 BQ_TABLE   = os.getenv("BQ_TABLE")
 MODEL      = os.getenv("EMBED_MODEL", "all-MiniLM-L6-v2")
 HF_TOKEN   = os.getenv("HF_API_TOKEN")
-HF_URL   = ("https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/{MODEL}")
+HF_MODEL   = f"sentence-transformers/{MODEL}"
 TOP_K      = 5
 # ─── Clients & Logger ──────────────────────────────────────────────────────────
 bq        = bigquery.Client()
 logger    = logging.getLogger("query_handler")
 logger.setLevel(logging.INFO)
 
-
-
-sentences = ["This is an example sentence", "Each sentence is converted"]
-
-model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
-
-
+model = SentenceTransformer(HF_MODEL)
 
 def embed_text(text: str) -> list[float]:
     """
     Call HF feature-extraction pipeline to get a 384-dim embedding.
     """
+    logger.info(f"Using model: {model}")
 
     try:
         embeddings = model.encode([text])
@@ -54,6 +49,8 @@ def query_handler(request):
     start = time.time()
     body = request.get_json(silent=True) or {}
     text = body.get("query")
+    logger.info(f'Query received: {text}')
+
     if not text:
         abort(400, "JSON must include non-empty 'query' field")
 
@@ -65,9 +62,6 @@ def query_handler(request):
 
     try:
         emb = embed_text(text)
-    except requests.HTTPError as e:
-        logger.error("HF API error: %s %s", e.response.status_code, e.response.text)
-        abort(502, "Embedding service error")
     except Exception as e:
         logger.exception("Failed to embed text")
         abort(500, "Internal embedding error")
