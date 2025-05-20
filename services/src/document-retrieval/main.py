@@ -94,5 +94,7 @@ def query_handler(request):
         abort(502, "Vector search error")
 
     total_ms = int((time.time() - start) * 1000)
+
     logger.info("Query handled in %d ms, returned %d rows", total_ms, len(rows))
+
     return (json.dumps(rows), 200, {"Content-Type": "application/json"})
